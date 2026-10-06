@@ -1,0 +1,78 @@
+# 本文件由 pyproject.toml 的 [tool.poetry.dependencies] 转换生成
+# 权威依赖源：pyproject.toml（poetry）
+# 本文件仅作顶层依赖速览与快速安装参考；可选 extras（xinference / zhipuai / ollama）未包含
+# Python 版本要求:>=3.10,<3.13（与 pyproject.toml 一致；py3.12 适配说明见下方注释）
+# 版本一律 == 钉死，避免 pip 默认拉最新导致构建失败。
+
+# --- RAG / LLM ---
+# P7:langchain 全家已移除(Document dataclass 化 / ChatLLM openai SDK 直连)
+# openai 为实际使用的 SDK 版本，模型兼容接口与出站模型适配器均使用 1.x API
+openai==1.109.1
+fastapi==0.109.2
+sse-starlette==1.8.2
+uvicorn==0.27.0.post1
+click==8.1.8
+httpx[brotli,http2,socks]==0.28.1
+python-multipart==0.0.9
+pydantic==2.11.1
+pydantic-settings==2.15.0
+# py3.12 适配：docling-core 2.91+ 要求 pydantic-settings>=2.14,原钉的 2.3.4 无法解析
+requests==2.32.3
+tqdm==4.66.1
+
+# --- 存储 ---
+SQLAlchemy==2.0.25
+pymysql==1.1.1
+pymilvus==2.4.10
+# 与 docker-compose 中 Elasticsearch 8.11.3 对齐；不钉会死装 9.x
+elasticsearch==8.11.1
+# marshmallow 4 移除 __version_info__，会与 environs<=9.5（旧 pymilvus）冲突；显式钉 3.26.1
+marshmallow==3.26.1
+
+# --- 解析（PDF/DOCX → Docling；图区 RapidOCR）---
+# 2.120.0 在 PyPI 不存在；2.120.1 起才有 OcrMode
+docling==2.120.1
+# transformers 5.x 与 docling 2.120 不兼容（layout 推理报 NameError: torch），锁 4.x
+transformers>=4.46,<5
+# CPU 版 torch 示例：
+#   pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1
+torchvision==0.20.1
+onnxruntime==1.19.2
+rapidocr==3.9.2
+opencv-python==4.10.0.84
+PyMuPDF==1.23.16
+# 下列三项本仓库不直接 import,但是 docling==2.120.1 的安装约束,钉死以免解析冲突
+openpyxl==3.1.5
+python-docx==1.2.0
+# py3.12 适配：1.24.4 无 cp312 wheel(源码编译会失败),1.26.4 为 3.10~3.12 全兼容
+numpy==1.26.4
+
+# --- WebUI ---
+# 批次1：8501 从 Streamlit 迁 NiceGUI（调试台）。1.4.34 是与 fastapi==0.109.2
+# 兼容的最后一个稳定线（自身约束 fastapi<0.110.0,>=0.109.1）；2.x/3.x 直接要求
+# starlette>=0.45，与 fastapi 0.109.2 传递依赖 starlette<0.36 死锁，升级 fastapi 前不可用。
+# 批次3 移除下方 streamlit 系依赖前，两套 WebUI 依赖短暂并存。
+nicegui==1.4.34
+streamlit==1.36.0
+streamlit-antd-components==0.3.1
+streamlit-chatbox==1.1.12.post4
+streamlit-aggrid==1.0.5
+streamlit-extras==0.4.2
+pandas==2.1.4
+# pyarrow 显式钉住 15.0.2：streamlit-antd-components 依赖它；
+# 新版 25.x 在本机被 Windows 应用控制策略拦截 DLL 无法加载，15.0.2 实测可用
+pyarrow==15.0.2
+# cryptography：MySQL 8 默认 caching_sha2_password 认证，pymysql 连接必需；
+# 另用于 OA token 缓存的 Fernet 加密（refresh_token 不明文落盘），勿删
+cryptography==50.0.1
+
+# --- 运行时杂项 ---
+memoization==0.4.0
+ruamel.yaml==0.18.6
+loguru==0.7.2
+langfuse==4.15.1
+
+# Home migration: keep legacy UI and Langfuse compatible with protobuf 5.
+protobuf==5.29.6
+googleapis-common-protos==1.70.0

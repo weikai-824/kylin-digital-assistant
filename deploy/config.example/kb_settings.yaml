@@ -1,0 +1,41 @@
+# Docker 首次启动示例 → kb_settings.yaml
+
+DEFAULT_KNOWLEDGE_BASE: oa_manuals
+TICKET_KB_NAME: knowledge_tickets
+DEFAULT_VS_TYPE: dual
+
+PARENT_CHUNK_SIZE: 1200
+CHILD_CHUNK_SIZE: 250
+CHILD_OVERLAP_SIZE: 40
+
+VECTOR_SEARCH_TOP_K: 5
+RERANK_CANDIDATE_TOP_K: 30
+HYBRID_RECALL_TOP_K: 30
+QUERY_PLAN_MAX_TOKENS: 256
+RRF_K: 60
+SCORE_THRESHOLD: 2.0
+RERANK_SCORE_THRESHOLD: 0.50
+RERANK_WEAK_THRESHOLD: 0.65
+
+PDF_OCR_THRESHOLD:
+  - 0.6
+  - 0.6
+
+kbs_config:
+  dual: {}
+  milvus:
+    host: milvus
+    port: "19530"
+    user: ""
+    password: ""
+    secure: false
+  es:
+    scheme: http
+    host: elasticsearch
+    port: "9200"
+    user: ""
+    password: ""
+
+TEXT_SPLITTER_NAME: ParentChild
+EMBEDDING_KEYWORD_FILE: embedding_keywords.txt
+EMBEDDING_DIM: 1024

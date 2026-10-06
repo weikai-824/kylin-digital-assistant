@@ -1,0 +1,47 @@
+# 开发 overlay：挂载源码并开启 KYLIN_DEV 热重载。
+# 与 docker-compose.yml 叠加使用，生产部署请勿带上本文件。
+#
+# 推荐入口（禁止无故 --no-cache）：
+#   make up / make restart
+#   .\scripts\dev.ps1 up / .\scripts\dev.ps1 restart
+# 或（若 .env 已设 COMPOSE_FILE）: docker compose up -d --build
+#
+# 仅改 Python 代码：保存即可热重载，无需 rebuild 或 restart
+# 改 requirements.txt / Dockerfile：才需要 --build
+
+services:
+  app:
+    volumes:
+      - .:/app
+    environment:
+      KYLIN_DEV: "1"
+
+  # OA 前端（Vue3 + Vite）：容器化常驻 :8502，与 app 同栈管理
+  oa-console:
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /web
+    command: >
+      sh -c "npm config set registry https://registry.npmmirror.com &&
+             npm install --no-audit --no-fund &&
+             npm install --no-save --no-audit --no-fund @rollup/rollup-linux-x64-musl @esbuild/linux-x64 &&
+             npm run dev"
+    environment:
+      # vite proxy 目标：容器网络内直连 app 服务（本机直跑默认仍 localhost:7861）
+      VITE_PROXY_TARGET: http://app:7861
+      # Local development stays at the Vite root and uses the fixed dev identity.
+      VITE_APP_BASE: /
+      VITE_API_BASE: ""
+      VITE_SSO_ENABLED: "false"
+      VITE_CANONICAL_URL: ""
+    ports:
+      - "8502:8502"
+    volumes:
+      - ./frontend/oa-console:/web
+      # node_modules 用 named volume（Linux 二进制与宿主机 Windows 侧隔离）
+      - oa_console_node_modules:/web/node_modules
+    depends_on:
+      - app
+
+volumes:
+  oa_console_node_modules:

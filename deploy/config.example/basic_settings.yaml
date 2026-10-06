@@ -1,0 +1,33 @@
+# Docker 首次启动示例 → KYLIN_ROOT/basic_settings.yaml
+
+log_verbose: false
+HTTPX_DEFAULT_TIMEOUT: 300.0
+HTTPX_KB_INGEST_TIMEOUT: 3600.0
+
+KB_ROOT_PATH: /data/kylin/data/knowledge_base
+
+SQLALCHEMY_DATABASE_URI: mysql+pymysql://kylin:change_me@mysql:3306/kylin_rag?charset=utf8mb4
+
+# 部门访问范围：豁免列表（不填则所有人按部门过滤）
+# EXEMPT_DEPTS: 豁免部门 ID（OA departmentId），这些部门的用户可查看全部文档
+# EXEMPT_USERIDS: 豁免用户 ID（OA userid），这些用户可查看全部文档
+EXEMPT_DEPTS: []
+EXEMPT_USERIDS: []
+
+OPEN_CROSS_DOMAIN: true
+api_token: ""
+gateway_shared_secret: ""
+require_gateway_identity: false
+permission_check_url: "http://127.0.0.1:48081/rpc-api/system/permission/has-any-permissions"
+
+DEFAULT_BIND_HOST: 0.0.0.0
+
+API_SERVER:
+  host: 0.0.0.0
+  port: 7861
+  public_host: 127.0.0.1
+  public_port: 7861
+
+WEBUI_SERVER:
+  host: 0.0.0.0
+  port: 8501

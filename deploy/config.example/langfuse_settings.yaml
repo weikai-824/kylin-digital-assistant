@@ -1,0 +1,22 @@
+# =============================================================
+# Langfuse 全链路观测 —— 配置模板
+# 部署路径: {KYLIN_ROOT}/langfuse_settings.yaml
+# 自建: docker compose -f docker-compose.langfuse.yml up -d
+# UI 默认: http://127.0.0.1:3000 ；在项目 Settings → API Keys 创建密钥
+# =============================================================
+
+# 总开关: false = 完全不连 Langfuse（NoOp）；true = 上报 Trace
+enabled: false
+
+# Langfuse Web 地址。容器内访问宿主机自建实例可用 http://host.docker.internal:3000
+host: http://127.0.0.1:3000
+
+# 项目密钥（与 docker-compose.langfuse.yml 默认 INIT 密钥一致，便于本地联调）
+public_key: "pk-lf-kylin-dev"
+secret_key: "sk-lf-kylin-dev"
+
+# true = 记录问题 / 消息 / 回答正文；false = 只记元数据与长度
+capture_content: true
+
+# 采样率 0~1
+sample_rate: 1.0

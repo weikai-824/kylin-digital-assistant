@@ -1,0 +1,45 @@
+# Local migration overlay; original compose files remain preserved.
+name: kylin-home
+services:
+  mysql:
+    image: mysql:8.0.46
+    ports: !override
+      - "127.0.0.1:13306:3306"
+  elasticsearch:
+    environment:
+      path.repo: /snapshots
+    volumes:
+      - D:/Projects/Kylin/backups/elasticsearch-snapshots:/snapshots
+    ports: !override
+      - "127.0.0.1:9200:9200"
+  milvus:
+    ports: !override
+      - "127.0.0.1:19530:19530"
+      - "127.0.0.1:9091:9091"
+  app:
+    image: kylin-home-app:restored-20260912
+    ports: !override
+      - "127.0.0.1:7861:7861"
+      - "127.0.0.1:8501:8501"
+    environment:
+      DOCKER_BOOTSTRAP_CONFIG: "0"
+      KYLIN_IDENTITY_MODE: fixed_dev
+  oa-console:
+    ports: !override
+      - "127.0.0.1:8502:8502"
+    environment:
+      VITE_GATEWAY_PROXY_TARGET: http://app:7861
+    command:
+      - sh
+      - -c
+      - "npm ci --no-audit --no-fund && npm run dev"
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    environment:
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+    volumes:
+      - D:/Projects/Kylin/models/ollama:/root/.ollama

@@ -1,0 +1,80 @@
+# Docker 首次启动示例 → model_settings.yaml
+# 把 api_base_url 改成内网地址；容器访问宿主机可用 host.docker.internal
+
+# P1（2026-09-03 trace 反查）：planner 默认走 deepseek-v4-flash 取代 QwQ-32B-AWQ，
+# 实测 planner 7~18s → 2~4s；QwQ / oa-llm 留作降级。
+# deepseek 平台 api_key 留空，由 deploy/entrypoint.sh 在容器启动时从 ${DEEPSEEK_API_KEY} 注入。
+DEFAULT_LLM_MODEL: deepseek-v4-flash
+FALLBACK_LLM_MODEL: oa-llm
+DEFAULT_EMBEDDING_MODEL: bge-m3
+DEFAULT_RERANK_MODEL: bge-reranker-large
+HISTORY_LEN: 3
+MAX_TOKENS: null
+TEMPERATURE: 0.7
+
+MODEL_PLATFORMS:
+  - platform_name: deepseek
+    platform_type: openai
+    api_base_url: https://api.deepseek.com/v1
+    api_key: ""   # 由 entrypoint.sh 从 ${DEEPSEEK_API_KEY} 注入
+    api_proxy: ""
+    api_concurrencies: 5
+    auto_detect_model: false
+    disable_thinking: true
+    grounding_style: lenient
+    llm_models:
+      - deepseek-v4-flash
+    embed_models: []
+    text2image_models: []
+    image2text_models: []
+    rerank_models: []
+    speech2text_models: []
+    text2speech_models: []
+
+  - platform_name: oa-llm
+    platform_type: openai
+    api_base_url: http://host.docker.internal:9800/v1
+    api_key: EMPTY
+    api_proxy: ""
+    api_concurrencies: 5
+    auto_detect_model: false
+    llm_models:
+      - oa-llm
+    embed_models: []
+    text2image_models: []
+    image2text_models: []
+    rerank_models: []
+    speech2text_models: []
+    text2speech_models: []
+
+  - platform_name: ollama
+    platform_type: ollama
+    api_base_url: http://host.docker.internal:11434/v1
+    api_key: EMPTY
+    api_proxy: ""
+    api_concurrencies: 5
+    auto_detect_model: false
+    llm_models: []
+    embed_models:
+      - bge-m3
+    text2image_models: []
+    image2text_models: []
+    rerank_models: []
+    speech2text_models: []
+    text2speech_models: []
+
+  - platform_name: oa-rerank
+    platform_type: openai
+    api_base_url: http://host.docker.internal:9998/v1
+    api_key: EMPTY
+    api_proxy: ""
+    api_concurrencies: 5
+    auto_detect_model: false
+    llm_models: []
+    embed_models: []
+    text2image_models: []
+    image2text_models: []
+    rerank_models:
+      - bge-reranker-large
+    speech2text_models: []
+    text2speech_models: []

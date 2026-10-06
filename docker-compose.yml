@@ -1,0 +1,183 @@
+# kylin-system-digital-human — 应用 + MySQL + Elasticsearch + Milvus
+# 用法：cp .env.example .env && docker compose up -d --build
+
+name: kylin-system-digital-human
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change_me}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-kylin_rag}
+      MYSQL_USER: ${MYSQL_USER:-kylin}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_me}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command:
+      [
+        "--character-set-server=utf8mb4",
+        "--collation-server=utf8mb4_unicode_ci",
+        "--default-time-zone=+08:00",
+      ]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-change_me}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+      # IK 中文分词插件走宿主机目录持久化（.data/ 已 gitignore）。
+      # 不能只 exec 进容器装：容器一旦 recreate 插件就没了，而索引 mapping 里
+      # 已写死 analyzer=ik_max_word，插件丢失会让 ES 侧解析/写入/查询都失败。
+      # 部署到其他环境时需把 analysis-ik 插件目录放到 .data/es-plugins/ 下。
+      - ./.data/es-plugins:/usr/share/elasticsearch/plugins
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9200 >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    restart: unless-stopped
+    environment:
+      ETCD_AUTO_COMPACTION_MODE: revision
+      ETCD_AUTO_COMPACTION_RETENTION: "1000"
+      ETCD_QUOTA_BACKEND_BYTES: "4294967296"
+      ETCD_SNAPSHOT_COUNT: "50000"
+    command: >
+      etcd
+      -advertise-client-urls=http://127.0.0.1:2379
+      -listen-client-urls=http://0.0.0.0:2379
+      --data-dir=/etcd
+    volumes:
+      - etcd_data:/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    restart: unless-stopped
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: minio server /minio_data --console-address ":9001"
+    volumes:
+      - minio_data:/minio_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  milvus:
+    image: milvusdb/milvus:v2.4.4
+    restart: unless-stopped
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - milvus_data:/var/lib/milvus
+    depends_on:
+      etcd:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9091/healthz"]
+      interval: 20s
+      timeout: 10s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      # .env 缺失时不再硬失败，所有变量都有默认值兜底
+      - path: .env
+        required: false
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      KYLIN_ROOT: /data/kylin
+      DOCKER_BOOTSTRAP_CONFIG: ${DOCKER_BOOTSTRAP_CONFIG:-1}
+      MYSQL_USER: ${MYSQL_USER:-kylin}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change_me}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-kylin_rag}
+      # Docling 模型目录：必须挂到宿主机，否则重建容器即丢
+      DOCLING_ARTIFACTS_PATH: /models/docling
+      # huggingface.co 不通，默认走国内镜像站
+      HF_ENDPOINT: ${HF_ENDPOINT:-https://hf-mirror.com}
+    ports:
+      - "7861:7861"
+      - "8501:8501"
+    volumes:
+      - ${KYLIN_ROOT_HOST:-./.data/kylin}:/data/kylin
+      - ${DOCLING_MODELS_HOST:-./.data/docling-models}:/models/docling
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      milvus:
+        condition: service_healthy
+
+  # OA 前端（Vue3 + Vite）：生产环境常驻 :8502，与 app 同栈管理。
+  # Vite proxy 目标：容器网络内直连 app 的 API :7861
+  oa-console:
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /web
+    command: >
+      sh -c "npm config set registry https://registry.npmmirror.com &&
+             npm install --no-audit --no-fund &&
+             npm install --no-save --no-audit --no-fund @rollup/rollup-linux-x64-musl @esbuild/linux-x64 &&
+             npm run dev"
+    environment:
+      VITE_PROXY_TARGET: http://app:7861
+      VITE_GATEWAY_PROXY_TARGET: ${VITE_GATEWAY_PROXY_TARGET:-http://host.docker.internal:48080}
+      # Gateway exposes the console below this path; Vite must emit matching asset URLs.
+      VITE_APP_BASE: /ai/digital-human/
+      VITE_API_BASE: /prod-api/app-api/ai/digital-human
+      VITE_SSO_ENABLED: "true"
+      VITE_CANONICAL_URL: ${VITE_CANONICAL_URL:-}
+    ports:
+      - "8502:8502"
+    volumes:
+      - ./frontend/oa-console:/web
+      # node_modules 用 named volume（Linux 二进制与宿主机 Windows 侧隔离）
+      - oa_console_node_modules:/web/node_modules
+    depends_on:
+      - app
+
+volumes:
+  mysql_data:
+  es_data:
+  etcd_data:
+  minio_data:
+  milvus_data:
+  oa_console_node_modules:

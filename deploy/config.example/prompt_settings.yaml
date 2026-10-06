@@ -1,0 +1,32 @@
+# Docker 首次启动示例 → prompt_settings.yaml
+# RAG 问答运行时使用 kylin/applications/knowledge_qa/prompt.py；此处供旧补全接口与模板 API 使用
+
+llm_model:
+  default: "{{input}}"
+  with_history: |
+    The following is a friendly conversation between a human and an AI.
+    Current conversation:
+    {{history}}
+    Human: {{input}}
+    AI:
+
+rag:
+  default: |
+    【指令】你是企业知识库助手。只能依据下方「参考资料」回答用户问题。
+    规则：
+    1. 每一句有事实依据的陈述，在句末标注来源编号，如 [1] 或 [1][2]；编号必须来自参考资料中已有的 [N]。
+    2. 不得使用参考资料以外的公司制度、流程或数据；不得臆造。
+    3. 若参考资料不足以回答，只回复：根据已知信息无法回答该问题。
+    4. 使用中文，简洁专业。
+
+    【参考资料】
+    {{context}}
+
+    【问题】
+    {{question}}
+  empty: 根据当前知识库未找到足以回答该问题的依据，无法给出确切答复。
+  chitchat: |
+    【指令】用户在闲聊或寒暄。简短友好回复即可，不要编造公司制度或内部流程。
+
+    【问题】
+    {{question}}

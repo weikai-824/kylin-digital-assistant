@@ -1,0 +1,93 @@
+# =============================================================
+# OA 知识文档同步配置 —— 生产环境模板
+# 部署路径: {KYLIN_ROOT}/oa_settings.yaml (容器内一般为 /data/kylin/oa_settings.yaml)
+# 用法: 复制本文件到 KYLIN_ROOT 后按生产环境填写, 确认无误后设 enabled: true,
+#       再执行: kylin oa-sync
+# 周期拉取: 另设 schedule_enabled: true 后执行 kylin oa-sync --daemon
+# 联调建议: 先 kylin oa-sync --dry-run (只决策不下载入库)
+# 注意: 本文件含 OA 密钥, 严禁提交 git、严禁写入日志
+# =============================================================
+
+# 总开关: false = 不执行 OA 同步(默认); true = 启用
+enabled: false
+
+# 身份模式（WebUI）:
+# fixed_dev = 本地默认：无工号登录，自动注入固定 userid（长期记忆仍可用）
+# oa_login  = 上线：侧边栏工号登录 + 下方 mock_auth / 真实 OA 校验
+# 可用环境变量 KYLIN_IDENTITY_MODE / KYLIN_DEV_USER_ID 覆盖
+identity_mode: fixed_dev
+fixed_userid: "dev_local"
+fixed_username: "本地开发者"
+
+# 身份校验 Mock 模式（仅 identity_mode=oa_login 时有意义）:
+# true = 工号直接通过校验（userid=mock_<工号>, 部门=未同步），不调 OA；
+# 拿到 OA 应用凭证后，填好下方 base_url/corpid/app_key/app_secret 并把本项改 false 即走真实校验
+mock_auth: true
+
+# 周期调度（仅 --daemon 使用；与手动 oa-sync 独立）
+# schedule_enabled=true 且 enabled=true 时，daemon 才会常驻
+schedule_enabled: false
+# 同步间隔（整数小时，最小 1，默认 24）
+interval_hours: 24
+# daemon 启动后是否立刻跑一轮（false 则先等待一个间隔）
+run_on_start: true
+
+# OA 文档访问范围默认策略:
+# false(默认) = OA 文档仅所属部门可见（access_depts=[文档部门]，部门隔离）
+# true = OA 文档默认全开放（不设 access_depts，所有部门可见）
+# 说明: 部分部门的文档需要开放给其他部门用时，可置 true（全局生效），
+#       或由管理员在 WebUI 知识库管理页对单个文件调整可见范围。
+document_public_by_default: false
+
+# OA 服务地址(生产: 内网 HTTPS 网关, 禁止用公网地址/明文传输)
+base_url: "https://oa.example.com"
+
+# 应用凭证(在 OA 开放平台申请, 生产建议通过部署平台的环境变量注入)
+corpid: "CORP_ID_PLACEHOLDER"
+app_key: "APP_KEY_PLACEHOLDER"
+app_secret: "APP_SECRET_PLACEHOLDER"
+
+# 同步身份: 三选一, 留空表示不使用对应解析方式(优先按顺序匹配)
+userid: ""        # OA user id(优先)
+job_num: ""       # 工号(备选)
+account: ""       # 账号(备选)
+
+# 目标知识库: OA 文档同步入库的 KB 名称
+# 注意: WebUI/评估问答时选用的 kb_name 必须与这里一致(默认 oa_kb)
+kb_name: "oa_kb"
+kb_info: "OA 知识文档同步库"
+
+# OA 分页拉取大小(建议 1~100, 生产默认 50)
+page_size: 50
+
+# 目录白名单: 只同步 folderPathName 包含以下子串的文档; 留空 = 同步全部目录
+folder_path_whitelist:
+  - "制度"
+  - "手册"
+  # - "会议纪要"
+
+# 跳过非「正常」状态的文档(草稿/回收站等不入库)
+skip_status_not_normal: true
+
+# 无附件的文档是否抓取 HTML 正文并转为 .md 入库
+ingest_html_content: true
+
+# HTTP 请求超时(秒), 生产大附件场景建议调大
+request_timeout: 60.0
+
+# 附件下载模块(留空 = 默认实现; 为扩展预留)
+download_module: ""
+
+# OA 鉴权传递方式:
+# false(默认) = token 走 URL query ?access_token=...，兼容既有网关，
+#               缺点是 token 会进网关访问日志/代理日志；
+# true        = token 改走 Authorization: Bearer 请求头，不落访问日志(更安全)。
+# ⚠️ 置 true 前必须先与 OA 网关联调确认其接受 Bearer 头；若网关只认 query
+#    参数，置 true 会导致所有 OA 请求鉴权失败(改回 false 即恢复)。
+auth_in_header: false
+
+# OA token 缓存加密密钥(可选):
+# 用于加密落盘的 refresh_token(data/oa_token_cache.json)。
+# 留空时由本机部署路径派生密钥(单机部署够用)；多机/容器重建场景建议显式
+# 注入同一密钥，保证缓存跨实例可读。切勿写入 git。
+# 环境变量名: KYLIN_OA_TOKEN_KEY

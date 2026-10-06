@@ -1,0 +1,29 @@
+# =============================================================
+# 长期记忆（跨会话）配置 —— 生产环境模板
+# 部署路径: {KYLIN_ROOT}/memory_settings.yaml (容器内一般为 /data/kylin/memory_settings.yaml)
+# 依赖: MySQL(long_term_memory 表) + Milvus(memory_vec) + bge-m3 + LLM(事实提取)
+# 注意: 启用前请确认已配置好模型平台(embedding 默认 bge-m3)。
+# 身份: 本地默认 oa_settings.identity_mode=fixed_dev（固定 userid）；
+#       上线改为 oa_login 后需工号登录才有 user_id，否则记忆不写入/不召回。
+# =============================================================
+
+# 总开关: false = 长期记忆完全停用（不提取、不注入）；true = 启用
+enabled: false
+
+# 每 N 轮提取一次事实（当前每轮问答后提取；预留节流）
+extract_every_turns: 1
+
+# importance 低于该值的记忆不注入生成（保留入库）
+importance_threshold: 3
+
+# Milvus 向量召回候选数
+recall_top_k: 5
+
+# 注入生成 prompt 的记忆条数上限
+inject_max_items: 3
+
+# 单条记忆注入的字符上限
+inject_max_chars: 200
+
+# 记忆向量化模型名；留空 = 用默认 embedding 模型（bge-m3）
+embedding_model: ""

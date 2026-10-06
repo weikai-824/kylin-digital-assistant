@@ -1,0 +1,9 @@
+# 本机开发用 Conda 环境 kylin311，不要在仓库内建 .venv（见 AGENTS.md）。
+# Poetry 此处主要用于镜像源；不在项目目录创建虚拟环境。
+[virtualenvs]
+in-project = false
+create = false
+
+[plugins]
+[plugins.pypi_mirror]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"

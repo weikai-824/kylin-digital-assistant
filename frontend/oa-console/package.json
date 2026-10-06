@@ -1,0 +1,21 @@
+{
+  "name": "kylin-oa-console",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Kylin 系统咨询数字助手 OA 风格前端（独立服务，默认 :8502）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@arco-design/web-vue": "^2.57.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.0.7"
+  }
+}
